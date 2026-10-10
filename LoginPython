@@ -1,1 +1,24 @@
+def fazer_login():
+  usuario_correto = "edgar"
+  senha_correto = "python1234"
 
+while True
+
+  try:
+
+  usuario = input("Digite seu usuario: ")
+  senha = input("Digite sua senha: ")
+
+    if usuario != usuario_correto or senha != senha_correto:
+      raise ValueError ("usuario ou senha incorretos!")
+
+    print("\n login realizado com sucesso")
+    break
+
+  except ValueError as erro:
+  print("\n Erro: {erro} ")
+  print("tentar novamente\n")
+
+print("iniciando login")
+fazer_login()
+print("\n bem vindo ao sistema!")
