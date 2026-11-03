@@ -1,0 +1,108 @@
+import sqlite3 as sql
+from datetime import datetime
+from pathlib import Path
+
+
+class car:
+    def __init__(self, make, model, year):
+        self.make = make
+        self.model = model
+        self.year = year
+
+    def display_info(self):
+        return f"{self.year} {self.make} {self.model}"
+
+
+class amg(car):
+    def __init__(self, make, model, year, horsepower, sportmode, hibrid):
+        super().__init__(make, model, year)
+        self.__horsepower = 480
+        self.sportmode = False
+        self.__hibrid = True
+
+    def display_info(self):
+        return f"{super().display_info()} with {self.__horsepower} HP"
+
+
+
+class saleship:
+    def __init__(self, client, car_object, final_price, date_sale=None):
+        self.client = client
+        self.make = car_object.make
+        self.model = car_object.model
+        self.year = car_object.year
+        self.date_sale = date_sale or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.final_price = final_price
+
+
+class database_manager:
+    def __init__(self, db_mercedes):
+        self.db_name = db_mercedes
+        self.conn = sql.connect(self.db_name)
+        self.cursor = self.conn.cursor()
+        self.create_table()
+
+    def create_table(self):
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS sales (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                client VARCHAR(100),
+                                make TEXT,
+                                model VARCHAR(20),
+                                year SMALLINT,
+                                date_sale TEXT,
+                                final_price REAL)''')
+        self.conn.commit()
+
+    def insert_sale(self, sale):
+        query = '''INSERT INTO sales (client, make, model, year, date_sale, final_price)
+                   VALUES (?, ?, ?, ?, ?, ?)'''
+        dados = (sale.client, sale.make, sale.model, sale.year, sale.date_sale, sale.final_price)
+        self.cursor.execute(query, dados)
+        self.conn.commit()
+
+    def has_sales(self):
+        self.cursor.execute("SELECT EXISTS (SELECT 1 FROM sales)")
+        return bool(self.cursor.fetchone()[0])
+
+    def see_all_sales(self):
+        self.cursor.execute("SELECT ID, client, make, model, year, date_sale, final_price FROM sales")
+        sales = self.cursor.fetchall()
+
+        for sale in sales:
+            print(f"ID: {sale[0]}, Client: {sale[1]}, Make: {sale[2]}, Model: {sale[3]}, Year: {sale[4]}, Date of Sale: {sale[5]}, Final Price: ${sale[6]:,.2f}")
+
+    def sales_by_client(self, client_name):
+        self.cursor.execute(
+            "SELECT ID, client, make, model, year, date_sale, final_price FROM sales WHERE client = ?",
+            (client_name,),
+        )
+        sales = self.cursor.fetchall()
+
+        if sales:
+            for sale in sales:
+                print(f"ID: {sale[0]}, Client: {sale[1]}, Make: {sale[2]}, Model: {sale[3]}, Year: {sale[4]}, Date of Sale: {sale[5]}, Final Price: ${sale[6]:,.2f}")
+        else:
+            print(f"No sales found for client: {client_name}")
+
+
+    def close(self):
+        self.conn.close()
+
+if __name__ == "__main__":
+    database_path = Path(__file__).with_name("db_mercedes.db")
+    db_manager = database_manager(database_path)
+
+    sample_sales = [
+        saleship("EDGAR", car("Mercedes", "AMG GT", 2023), 150000.00, "2023-06-01 10:00:00"),
+        saleship("MARIANA", car("Mercedes", "AMG C63", 2022), 120000.00, "2023-06-02 14:30:00"),
+        saleship("LUCAS", car("Mercedes", "AMG E63", 2021), 130000.00, "2023-06-03 09:15:00"),
+        saleship("ISABELA", car("Mercedes", "AMG GLE", 2020), 110000.00, "2023-06-04 16:45:00"),
+    ]
+
+    try:
+        if not db_manager.has_sales():
+            for sale in sample_sales:
+                db_manager.insert_sale(sale)
+        db_manager.see_all_sales()
+    finally:
+        db_manager.close()
