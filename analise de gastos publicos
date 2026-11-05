@@ -1,0 +1,74 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
+
+arquivo_csv = "requisicoes_materiais.csv"
+
+df = pd.read_csv(
+    arquivo_csv,
+    sep=",",
+    encoding="latin1",
+    low_memory=False,
+)
+
+
+df["valor_limpo"] = (
+    df["valor"]
+    .astype(str)
+    .str.replace("R$", "", regex=False)
+    .str.strip()
+    .str.replace(".", "", regex=False)
+)
+df["valor_limpo"] = pd.to_numeric(df["valor_limpo"], errors="coerce").fillna(0)
+
+
+df["data"] = pd.to_datetime(df["data"], format="%d/%m/%Y", errors="coerce")
+df["ano"] = df["data"].dt.year
+
+print(" --- Diagnóstico Geral das Requisições da UFCA ---")
+print(f"Total de registros analisados: {len(df)}")
+print(f"Volume financeiro total movimentado: R$ {df['valor_limpo'].sum():,.2f}")
+print(f"Valor medio por requisicao: R$ {df['valor_limpo'].mean():,.2f}")
+
+print("\n --- Top 5 Unidades que mais abriram requisicoes (Frequencia) ---")
+print(df["unidade_requisitante"].value_counts().head(5))
+
+print("\n --- Top 5 Unidades com maior gasto acumulado (R$) ---")
+gastos_unidade = (
+    df.groupby("unidade_requisitante")["valor_limpo"]
+    .sum()
+    .sort_values(ascending=False)
+)
+for unidade, valor in gastos_unidade.head(5).items():
+    print(f"- {unidade}: R$ {valor:,.2f}")
+
+print("\n --- Historico de Gastos por Ano ---")
+print(df.groupby("ano")["valor_limpo"].sum().map("R$ {:,.2f}".format))
+
+
+
+sns.set_theme(style="whitegrid")
+fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+
+gastos_unidade.head(5).plot(kind="barh", ax=axes[0], color="royalblue")
+axes[0].set_title("Top 5 Unidades por Gasto Total (R$)")
+axes[0].set_xlabel("Total em R$")
+axes[0].set_ylabel("")
+
+
+df.groupby("ano")["valor_limpo"].sum().plot(
+    kind="line", marker="o", ax=axes[1], color="darkorange", linewidth=2
+)
+axes[1].set_title("Evolução Temporal dos Gastos (R$)")
+axes[1].set_xlabel("Ano")
+axes[1].set_ylabel("Total Gasto (R$)")
+axes[1].set_xticks(df["ano"].dropna().unique())
+
+plt.tight_layout()
+plt.show()
+
+warnings.filterwarnings("ignore", category=UserWarning)  # Silencia os avisos de fontes
+plt.rcParams["font.family"] = (
+    "sans-serif"
+)
